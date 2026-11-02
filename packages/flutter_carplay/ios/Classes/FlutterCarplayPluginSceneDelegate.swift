@@ -32,8 +32,28 @@ class FlutterCarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelega
   static public func forceUpdateRootTemplate() {
     let rootTemplate = SwiftFlutterCarplayPlugin.rootTemplate
     let animated = SwiftFlutterCarplayPlugin.animated
+    guard let interfaceController = self.interfaceController,
+          let rootTemplate = rootTemplate else { return }
+    let isNowPlayingVisible = interfaceController.topTemplate === CPNowPlayingTemplate.shared
 
-    self.interfaceController?.setRootTemplate(rootTemplate!, animated: animated)
+    interfaceController.setRootTemplate(rootTemplate, animated: animated) { completed, error in
+      guard completed else {
+        NSLog("FlutterCarPlaySceneDelegate - failed to update root template: \(error?.localizedDescription ?? "unknown error")")
+        return
+      }
+      if isNowPlayingVisible {
+        let nowPlayingTemplate = FCPSharedNowPlayingTemplate()
+        nowPlayingTemplate.get.elementId = nowPlayingTemplate.elementId
+        FlutterCarPlaySceneDelegate.pushIfNotExist(
+          template: nowPlayingTemplate.get,
+          animated: false
+        )
+        SwiftFlutterCarplayPlugin.templateStack.removeAll {
+          $0.elementId == nowPlayingTemplate.elementId
+        }
+        SwiftFlutterCarplayPlugin.templateStack.append(nowPlayingTemplate)
+      }
+    }
   }
 
   // https://developer.apple.com/documentation/carplay/cplisttemplate/updatesections(_:)
